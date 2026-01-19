@@ -213,7 +213,7 @@ def run(args):
         model.eval()
         
         with torch.no_grad():
-            for (idx,img, cls) in tqdm(enumerate(valloader)):
+            for idx,(img, cls) in tqdm(enumerate(valloader)):
                 if idx == 1000 : 
                     break
                 img = img.to(device)
