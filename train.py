@@ -40,7 +40,7 @@ def test():
     label = ["cat","cat","wild"]
     print(model(sample,label,timestep).shape)
 
-def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5):
+def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, num_inference_steps=250):
     model.eval()
     os.makedirs(out_dir, exist_ok=True)
     real_dir = os.path.join(out_dir, "real")
@@ -50,12 +50,10 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
 
     fid = FrechetInceptionDistance(feature=2048).to(device)
     
-    noise_scheduler.set_timesteps(50, device=device)
+    noise_scheduler.set_timesteps(num_inference_steps, device=device)
 
     with torch.no_grad():
         for idx, (img, cls) in enumerate(tqdm(valloader, desc="FID")):
-            if idx == 10:
-                break
             img = img.to(device)
             B = img.shape[0]
             
@@ -219,7 +217,7 @@ def run(args):
             save_image(grid, save_path)
 
         return save_path
-    """
+    
     for i in range(epoch) :
         
         model.train()
@@ -317,9 +315,8 @@ def run(args):
 
     torch.save(ema.state_dict(), "dit_model_final.pth")
     
-    """
 
-    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight)
+    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight, num_inference_steps=num_inference_steps)
     wandb.log({"FID_Score": fid_score})
     wandb.finish()
 
