@@ -187,10 +187,8 @@ def run(args):
 
             latents = torch.randn(B, 4, 16, 16).to(device)
             
-            noise_scheduler.set_timesteps(num_inference_steps, device=device)
-            
             num_snapshots = 10
-            snap_idxs = set(torch.linspace(0, num_inference_steps - 1, steps=num_snapshots).round().long().tolist())
+            snap_idxs = set(torch.linspace(0, 1000 - 1, steps=num_snapshots).round().long().tolist())
             snapshots = []
 
             for i, t in enumerate(noise_scheduler.timesteps):
