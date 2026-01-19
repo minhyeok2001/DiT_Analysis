@@ -24,9 +24,10 @@ class DiT(nn.Module):
         grid_size = (resolution // 8) // patch_size
         pos_embed = get_2d_sincos_pos_embed(
             embed_dim=embedding_dim, 
-            grid_size=grid_size
+            grid_size=grid_size,
+            output_type='pt'
         )
-        pos_embed = torch.from_numpy(pos_embed).float().unsqueeze(0)
+        self.pos_embed = nn.Parameter(pos_embed.float().unsqueeze(0), requires_grad=False)
         self.register_buffer("pos_embed", pos_embed)
         
         self.linear1 = nn.Linear(4*self.patch_size*self.patch_size,embedding_dim)
