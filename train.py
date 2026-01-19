@@ -54,6 +54,8 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
 
     with torch.no_grad():
         for idx, (img, cls) in enumerate(tqdm(valloader, desc="FID")):
+            if idx == 10:
+                break
             img = img.to(device)
             B = img.shape[0]
             
@@ -317,17 +319,9 @@ def run(args):
     
     """
 
-    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5)   
-    
-    
-    
-
+    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight)
+    wandb.log({"FID_Score": fid_score})
     wandb.finish()
-
-
-
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
