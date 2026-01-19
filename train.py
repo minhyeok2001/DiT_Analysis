@@ -53,7 +53,7 @@ def run(args):
     num_blocks = args.num_blocks
     num_head = args.num_head
     cfg_dropout = args.cfg_dropout
-    num_inference_steps = args.num_inference_step
+    num_inference_steps = args.num_inference_steps
     
     wandb.init(
         project="DiT Analysis",
@@ -66,7 +66,7 @@ def run(args):
             "num_blocks" : num_blocks,
             "num_head" : num_head,
             "cfg_dropout" : cfg_dropout,
-            "num_inference_step" : num_inference_step
+            "num_inference_step" : num_inference_steps
         }
     )
     
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_blocks", type=int, default=12)
     parser.add_argument("--num_head", type=int, default=4)
     parser.add_argument("--cfg_dropout", type=float, default=0.3)
-    parser.add_argument("--num_inference_step", type=int, default=250)
+    parser.add_argument("--num_inference_steps", type=int, default=250)
 
     args = parser.parse_args()
     
