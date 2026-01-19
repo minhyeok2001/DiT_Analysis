@@ -53,6 +53,7 @@ def run(args):
     num_blocks = args.num_blocks
     num_head = args.num_head
     cfg_dropout = args.cfg_dropout
+    num_inference_steps = args.num_inference_step
     
     wandb.init(
         project="DiT Analysis",
@@ -64,7 +65,8 @@ def run(args):
             "mode": mode,
             "num_blocks" : num_blocks,
             "num_head" : num_head,
-            "cfg_dropout" : cfg_dropout
+            "cfg_dropout" : cfg_dropout,
+            "num_inference_step" : num_inference_step
         }
     )
     
@@ -127,8 +129,7 @@ def run(args):
 
             latents = torch.randn(B, 4, 16, 16).to(device)
             
-            num_inference_steps = 250
-            noise_scheduler.set_timesteps(num_inference_steps)
+            noise_scheduler.set_timesteps(num_inference_steps, device=device)
             
             num_snapshots = 10
             snap_idxs = set(torch.linspace(0, num_inference_steps - 1, steps=num_snapshots).round().long().tolist())
@@ -212,7 +213,9 @@ def run(args):
         model.eval()
         
         with torch.no_grad():
-            for img, cls in tqdm(valloader):
+            for (idx,img, cls) in tqdm(enumerate(valloader)):
+                if idx == 1000 : 
+                    break
                 img = img.to(device)
                 img = img * 2 - 1
 
@@ -252,9 +255,7 @@ def run(args):
             "sample":wandb.Image(img_path)
         })
 
-
     torch.save(model.state_dict(), "dit_model_final.pth")
-    
     
     wandb.finish()
     
@@ -270,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_blocks", type=int, default=12)
     parser.add_argument("--num_head", type=int, default=4)
     parser.add_argument("--cfg_dropout", type=float, default=0.3)
+    parser.add_argument("--num_inference_step", type=int, default=250)
 
     args = parser.parse_args()
     
