@@ -26,8 +26,8 @@ class DiT(nn.Module):
             embed_dim=embedding_dim, 
             grid_size=grid_size,
             output_type='pt'
-        )
-        self.register_buffer("pos_embed", pos_embed)
+        ).float()
+        self.register_buffer("pos_embed", pos_embed.float())
         
         self.linear1 = nn.Linear(4*self.patch_size*self.patch_size,embedding_dim)
         
