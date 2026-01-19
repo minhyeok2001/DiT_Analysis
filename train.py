@@ -17,6 +17,7 @@ from diffusers.training_utils import EMAModel
 from torchvision.utils import make_grid, save_image
 from diffusers import AutoencoderKL
 from transformers import CLIPTokenizer, CLIPTextModel
+from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 def test():
@@ -38,7 +39,64 @@ def test():
     timestep = torch.randint(0,1,(3,))
     label = ["cat","cat","wild"]
     print(model(sample,label,timestep).shape)
+
+def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5):
+    model.eval()
+    os.makedirs(out_dir, exist_ok=True)
+    real_dir = os.path.join(out_dir, "real")
+    gen_dir = os.path.join(out_dir, "gen")
+    os.makedirs(real_dir, exist_ok=True)
+    os.makedirs(gen_dir, exist_ok=True)
+
+    fid = FrechetInceptionDistance(feature=2048).to(device)
     
+    noise_scheduler.set_timesteps(50, device=device)
+
+    with torch.no_grad():
+        for idx, (img, cls) in enumerate(tqdm(valloader, desc="FID")):
+            img = img.to(device)
+            B = img.shape[0]
+            
+            real_imgs_uint8 = (img * 255).clamp(0, 255).to(dtype=torch.uint8)
+            fid.update(real_imgs_uint8, real=True)
+            
+            for j in range(B):
+                save_image(img[j], os.path.join(real_dir, f"{idx*B+j:05d}.png"))
+
+            prompts = [f"A photo of {l}" for l in cls]
+            text_input = tokenizer(prompts, padding="max_length", truncation=True, return_tensors="pt").to(device)
+            text_embeddings = text_encoder(**text_input).pooler_output
+            
+            uncond_input = tokenizer([""] * B, padding="max_length", truncation=True, return_tensors="pt").to(device)
+            uncond_embeddings = text_encoder(**uncond_input).pooler_output
+
+            latents = torch.randn(B, 4, 16, 16).to(device)
+
+            for t in noise_scheduler.timesteps:
+                latent_model_input = noise_scheduler.scale_model_input(latents, t)
+                
+                noise_pred_uncond = model(x=latent_model_input, label=uncond_embeddings, timestep=t)
+                noise_pred_text = model(x=latent_model_input, label=text_embeddings, timestep=t)
+                
+                noise_pred = noise_pred_uncond + cfg_weight * (noise_pred_text - noise_pred_uncond)
+                
+                latents = noise_scheduler.step(noise_pred, t, latents).prev_sample
+
+            decoded = vae.decode(latents / 0.13025).sample
+            decoded = (decoded / 2 + 0.5).clamp(0, 1)
+            
+            gen_imgs_uint8 = (decoded * 255).to(dtype=torch.uint8)
+            fid.update(gen_imgs_uint8, real=False)
+
+            for j in range(B):
+                save_image(decoded[j], os.path.join(gen_dir, f"{idx*B+j:05d}.png"))
+
+    fid_score = fid.compute().item()
+    print(f"FID Score: {fid_score:.4f}")
+    
+    return fid_score
+
+
 def run(args):
     
     ## 이렇게 하면 안되지만, colab 이용해야하므로 ..,,
@@ -159,7 +217,7 @@ def run(args):
             save_image(grid, save_path)
 
         return save_path
-
+    """
     for i in range(epoch) :
         
         model.train()
@@ -255,10 +313,21 @@ def run(args):
             "sample":wandb.Image(img_path)
         })
 
-    torch.save(model.state_dict(), "dit_model_final.pth")
+    torch.save(ema.state_dict(), "dit_model_final.pth")
     
+    """
+
+    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5)   
+    
+    
+    
+
     wandb.finish()
-    
+
+
+
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
