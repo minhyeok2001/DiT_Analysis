@@ -55,14 +55,13 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
         inference_scheduler = EulerDiscreteScheduler.from_config(noise_scheduler.config)
     else:
         inference_scheduler = noise_scheduler
-    
-    inference_scheduler.set_timesteps(num_inference_steps, device=device)
 
     with torch.no_grad():
         for idx, (img, cls) in enumerate(tqdm(valloader, desc="FID")):
             img = img.to(device)
             B = img.shape[0]
             
+            inference_scheduler.set_timesteps(num_inference_steps, device=device)
             real_imgs_uint8 = (img * 255).clamp(0, 255).to(dtype=torch.uint8)
             fid.update(real_imgs_uint8, real=True)
             
