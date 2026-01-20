@@ -17,7 +17,10 @@ if not os.path.exists(DATA_PATH) :
     if os.path.exists(os.path.expanduser("~/.kaggle")) :  ## 여기서도 expanduser 꼭 써야지 !! 안쓰면 이거 인식 못함
         os.system("chmod 600 ~/.kaggle/kaggle.json")
 
+    elif os.path.exists(os.path.expanduser("/root/.config/kaggle/")) :  ## 여기서도 expanduser 꼭 써야지 !! 안쓰면 이거 인식 못함
     ## kaggle.json이 없다면, colab인 것으로 인지하고 file 업로드 요청
+        pass    
+    
     else :
         
         if "COLAB_RELEASE_TAG" in os.environ or "COLAB_GPU" in os.environ :
