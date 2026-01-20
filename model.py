@@ -27,6 +27,8 @@ class DiT(nn.Module):
         ).float()
         self.register_buffer("pos_embed", pos_embed.float())
         
+        self.linear = nn.Linear(256,embedding_dim)
+        
         self.linear1 = nn.Linear(4*self.patch_size*self.patch_size,embedding_dim)
         
         self.blocks = nn.ModuleList([
@@ -52,7 +54,6 @@ class DiT(nn.Module):
         x = x.permute(0,2,4,1,3,5)
         x = x.flatten(1,2).flatten(2,4) ## flatten은 시작, 끝점 기준으로 하니까..
         
-        
         ## 결국 차원은 [B, 패치개수, C * p * p]
         return x
     
@@ -77,13 +78,22 @@ class DiT(nn.Module):
         #print("timestep shape : ",timestep.shape)
         #print("label shape : ",label.shape)
 
+        if self.mode == "In-Context Conditioning":
+            if label.shape[-1] != timestep.shape[-1]:
+                label = self.linear(label)
+            x = torch.cat([x,label[:,None,:],timestep[:,None,:]],dim=1)
+            label = None
+            timestep = None
+            
         ## 2. DIT
         for block in self.blocks:
             x = block(x,label,timestep)
         
+        if self.mode == "In-Context Conditioning":
+            x = x[:,:-2,:]
         ## 3. LN & linear
         # 지금 차원은 B, 패치개수, hidden_dim
-        
+    
         x = self.layernorm(x)
         x = self.linear2(x)
         

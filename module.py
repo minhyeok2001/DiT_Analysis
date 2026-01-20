@@ -48,9 +48,7 @@ class TimeEmbedding(nn.Module):
         t_freq = self.timestep_Embedding(timestep, self.frequency_embedding_size)
         t_emb = self.mlp(t_freq)
         return t_emb    
-    
 
-## adaLN-zero version
 class DiTBlock(nn.Module):
     def __init__(self, mode, num_head, embedding_dim, mlp_ratio = 4):
         super().__init__()
@@ -97,7 +95,18 @@ class DiTBlock(nn.Module):
             )
             
         elif self.mode == "In-Context Conditioning":
-            pass
+            self.flag = False ## 이거로 concat 했는지 안했는지
+            self.norm1 = nn.LayerNorm(embedding_dim)
+            self.attn = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_head, batch_first=True)
+            
+            self.norm2 = nn.LayerNorm(embedding_dim)
+            self.mlp = nn.Sequential(
+                nn.Linear(embedding_dim,embedding_dim*mlp_ratio),
+                nn.SiLU(),
+                nn.Linear(embedding_dim*mlp_ratio,embedding_dim),
+            )
+
+
         else :
             raise RuntimeError("모드 확인 고고")
 
@@ -152,7 +161,20 @@ class DiTBlock(nn.Module):
             return x
             
         elif self.mode == "In-Context Conditioning":
-            pass
+            ## 만약 이거라면, shape 맞춰주고 cat 해서 들어와야되니까 그냥 밖에서 처리해주기....forward(self,x,label,timestep): 중에서 label 만 들어오게 하기 그냥
+            assert (timestep is None) and (label is None), "CONCAT이니까 밖에서 처리하고 들어오소~"
+            
+            temp = x
+            x = self.norm1(x)
+            x,_ = self.attn(x,x,x)
+            x = x+temp
+            
+            temp = x
+            x = self.norm2(x)
+            x = self.mlp(x)
+            x = x + temp
+            return x
+
         else :
             raise RuntimeError("모드 확인 고고")
 
