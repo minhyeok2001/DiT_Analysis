@@ -56,11 +56,13 @@ def test_flops(args):
     print(f"Total Params: {params / 1e6:.2f} M")
 
 
-def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, inference_type="euler", num_inference_steps=20):
+def calculate_fid(mode, valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, inference_type="euler", num_inference_steps=20):
     model.eval()
     os.makedirs(out_dir, exist_ok=True)
+    out_dir = os.path.join(out_dir, f"{mode}") 
     real_dir = os.path.join(out_dir, "real")
     gen_dir = os.path.join(out_dir, "gen")
+    
     os.makedirs(real_dir, exist_ok=True)
     os.makedirs(gen_dir, exist_ok=True)
 
@@ -198,7 +200,8 @@ def run(args):
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     
-    sample_dir = "checkpoints/val_samples"
+    unique_run_name = f"{mode}"
+    sample_dir = os.path.join("checkpoints", unique_run_name, "val_samples")
     os.makedirs(sample_dir, exist_ok=True)
     
     
@@ -357,7 +360,7 @@ def run(args):
 
     torch.save(ema.state_dict(), "dit_model_final.pth")
     
-    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight,inference_type=inference_type ,num_inference_steps=num_inference_steps)
+    fid_score = calculate_fid(mode, valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight,inference_type=inference_type ,num_inference_steps=num_inference_steps)
     wandb.log({"FID_Score": fid_score})
     wandb.finish()
 
