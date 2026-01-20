@@ -110,7 +110,7 @@ def run(args):
     ## 이렇게 하면 안되지만, colab 이용해야하므로 ..,,
     wandb.login(key="08198b7be027ddffa5241b9acf2f45cd4d42e993")
     
-    device = "mps"
+    device = args.device
     epoch = args.epoch 
     lr = args.lr 
     batch_size = args.batch_size
@@ -345,6 +345,7 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--epoch", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--batch_size", type=int, default=3)
