@@ -213,7 +213,7 @@ class DiTBlock(nn.Module):
             return x
         
         elif self.mode == "Freq-Gate-adaLN":
-            if label.shape[-1] != self.embedding_dim:
+            if label.shape[-1] !=  timestep.shape[-1]:
                 label = self.linear(label)
 
             t_emb_proj = timestep
