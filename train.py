@@ -142,6 +142,7 @@ def run(args):
     
     wandb.init(
         project="DiT Analysis",
+        name=f"{mode}",
         config={
             "epochs": epoch,
             "lr": lr,
