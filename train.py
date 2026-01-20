@@ -24,7 +24,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 def test():
-    mode_list = ["adaLN-Zero","Cross-Attention","In-Context Conditioning","Concat"]
+    mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning","Concat"]
 
     model = DiT(mode=mode_list[0],num_blocks=12,num_head=4)
 
@@ -365,7 +365,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--cfg_weight", type=float, default=2.5)
-    parser.add_argument("--mode", type=str, default="adaLN-Zero", choices=["adaLN-Zero", "Cross-Attention", "In-Context Conditioning"])
+    parser.add_argument("--mode", type=str, default="adaLN-Zero", choices=["adaLN-Zero", "Cross-Attention", "In-Context-Conditioning"])
     parser.add_argument("--num_blocks", type=int, default=12)
     parser.add_argument("--num_head", type=int, default=8)
     parser.add_argument("--patch_size", type=int, default=2)

@@ -9,7 +9,7 @@ class DiT(nn.Module):
     def __init__(self, mode, num_blocks, num_head, patch_size=4, embedding_dim=256, resolution=128):
         super().__init__()
         
-        mode_list = ["adaLN-Zero","Cross-Attention","In-Context Conditioning"]
+        mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning"]
         
         assert mode in mode_list, "mode 선택 다시하기 !!"
         
@@ -78,7 +78,7 @@ class DiT(nn.Module):
         #print("timestep shape : ",timestep.shape)
         #print("label shape : ",label.shape)
 
-        if self.mode == "In-Context Conditioning":
+        if self.mode == "In-Context-Conditioning":
             if label.shape[-1] != timestep.shape[-1]:
                 label = self.linear(label)
             x = torch.cat([x,label[:,None,:],timestep[:,None,:]],dim=1)
@@ -89,7 +89,7 @@ class DiT(nn.Module):
         for block in self.blocks:
             x = block(x,label,timestep)
         
-        if self.mode == "In-Context Conditioning":
+        if self.mode == "In-Context-Conditioning":
             x = x[:,:-2,:]
         ## 3. LN & linear
         # 지금 차원은 B, 패치개수, hidden_dim

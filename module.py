@@ -94,7 +94,7 @@ class DiTBlock(nn.Module):
                 nn.Linear(embedding_dim*mlp_ratio,embedding_dim),
             )
             
-        elif self.mode == "In-Context Conditioning":
+        elif self.mode == "In-Context-Conditioning":
             self.flag = False ## 이거로 concat 했는지 안했는지
             self.norm1 = nn.LayerNorm(embedding_dim)
             self.attn = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_head, batch_first=True)
@@ -160,7 +160,7 @@ class DiTBlock(nn.Module):
             x = x + temp
             return x
             
-        elif self.mode == "In-Context Conditioning":
+        elif self.mode == "In-Context-Conditioning":
             ## 만약 이거라면, shape 맞춰주고 cat 해서 들어와야되니까 그냥 밖에서 처리해주기....forward(self,x,label,timestep): 중에서 label 만 들어오게 하기 그냥
             assert (timestep is None) and (label is None), "CONCAT이니까 밖에서 처리하고 들어오소~"
             
