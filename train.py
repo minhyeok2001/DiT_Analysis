@@ -96,8 +96,9 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
                 latents = latents * inference_scheduler.init_noise_sigma
 
             for t in inference_scheduler.timesteps:
-                t = torch.full((B,), t, device=device, dtype=torch.long)
+                
                 latent_model_input = inference_scheduler.scale_model_input(latents, t)
+                t = torch.full((B,), t, device=device, dtype=torch.long)
                 
                 noise_pred_uncond = model(x=latent_model_input, label=uncond_embeddings, timestep=t)
                 noise_pred_text = model(x=latent_model_input, label=text_embeddings, timestep=t)
@@ -234,8 +235,8 @@ def run(args):
             snapshots = []
 
             for i, t in enumerate(inference_scheduler.timesteps):
-                t= torch.full((B,), t, device=device, dtype=torch.long)
                 latent_model_input = inference_scheduler.scale_model_input(latents, t)
+                t= torch.full((B,), t, device=device, dtype=torch.long)
 
                 noise_pred_uncond = model(x=latent_model_input, label=uncond_embeddings, timestep=t)
                 noise_pred_text = model(x=latent_model_input, label=text_embeddings, timestep=t)
