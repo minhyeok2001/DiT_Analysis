@@ -1,9 +1,7 @@
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-from diffusers import AutoencoderKL
 from diffusers.models.embeddings import get_2d_sincos_pos_embed
-from transformers import CLIPTokenizer, CLIPTextModel
 
 from module import TimeEmbedding, DiTBlock
 

@@ -10,6 +10,8 @@ import random
 
 import data.get_data 
 import data.dataloader 
+
+from thop import profile
 from tqdm import tqdm
 from model import DiT
 from diffusers import DDPMScheduler, AutoencoderKL, EulerDiscreteScheduler
@@ -22,7 +24,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 def test():
-    mode_list = ["adaLN-Zero","Cross-Attention","In-Context Conditioning"]
+    mode_list = ["adaLN-Zero","Cross-Attention","In-Context Conditioning","Concat"]
 
     model = DiT(mode=mode_list[0],num_blocks=12,num_head=4)
 
@@ -40,6 +42,19 @@ def test():
     timestep = torch.randint(0,1,(3,))
     label = ["cat","cat","wild"]
     print(model(sample,label,timestep).shape)
+
+def test_flops(args):
+    model = DiT(mode="Cross-Attention",num_blocks=args.num_blocks,num_head=args.num_head,patch_size=args.patch_size,embedding_dim=args.embedding_dim)
+    sample = torch.randn(3,4,16,16)
+    timestep = torch.randint(0,1,(3,))
+    label = torch.rand(3,256)
+
+    macs, params = profile(model, inputs=(sample, label, timestep))
+
+    gflops = (macs * 2) / 1e9  # MACs * 2 = FLOPs, 10^9로 나누면 Giga
+    print(f"Total GFLOPs: {gflops:.2f} G")
+    print(f"Total Params: {params / 1e6:.2f} M")
+        
 
 def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, inference_type="euler", num_inference_steps=20):
     model.eval()
@@ -359,5 +374,6 @@ if __name__ == '__main__':
     parser.add_argument("--num_inference_steps", type=int, default=20)
 
     args = parser.parse_args()
-    
+
+    #test_flops(args)
     run(args)

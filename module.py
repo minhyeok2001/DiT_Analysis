@@ -82,7 +82,20 @@ class DiTBlock(nn.Module):
             nn.init.zeros_(self.adaLN_modulation[-1].bias)
             
         elif self.mode == "Cross-Attention":
-            pass    
+            self.norm1 = nn.LayerNorm(embedding_dim)
+            self.attn = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_head, batch_first=True)
+            
+            self.norm2 = nn.LayerNorm(embedding_dim)
+            self.proj = nn.Linear(embedding_dim,embedding_dim)
+            self.cross_attn = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_head, batch_first=True) ## 여기에다가 cond 씌워주기
+            
+            self.norm3 = nn.LayerNorm(embedding_dim)
+            self.mlp = nn.Sequential(
+                nn.Linear(embedding_dim,embedding_dim*mlp_ratio),
+                nn.SiLU(),
+                nn.Linear(embedding_dim*mlp_ratio,embedding_dim),
+            )
+            
         elif self.mode == "In-Context Conditioning":
             pass
         else :
@@ -93,7 +106,6 @@ class DiTBlock(nn.Module):
         return x * (1+ scale.unsqueeze(1)) + shift.unsqueeze(1)
         
     def forward(self,x,label,timestep):
-        
         ## x : [B, 패치개수, hidden_dim]
         if self.mode == "adaLN-Zero":
             if label.shape[-1] != timestep.shape[-1]:
@@ -117,7 +129,28 @@ class DiTBlock(nn.Module):
             return x
             
         elif self.mode == "Cross-Attention":
-            pass    
+            if label.shape[-1] != timestep.shape[-1]:
+                label = self.linear(label)
+            cond = label+timestep
+            
+            temp = x
+            x = self.norm1(x)
+            x, _ = self.attn(x,x,x)
+            x = x + temp
+            
+            temp = x 
+            x = self.norm2(x)   
+            ## 여기서 지금 x의 차원은 B, 패치개수, dim
+            ## cond의 차원은 B, dim .. 이걸 어쩐담? -> projection 해주기
+            x,_ = self.cross_attn(x,cond[:,None,:],cond[:,None,:])   ## 이거 순서가 Q K V  라고 함
+            x = x + temp
+            
+            temp = x
+            x = self.norm3(x)
+            x = self.mlp(x)
+            x = x + temp
+            return x
+            
         elif self.mode == "In-Context Conditioning":
             pass
         else :
