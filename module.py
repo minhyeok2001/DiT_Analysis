@@ -57,6 +57,8 @@ class DiTBlock(nn.Module):
         
         self.mode = mode
         
+        self.linear = nn.Linear(256,embedding_dim)
+        
         if self.mode == "adaLN-Zero":
                     
             self.norm1 = nn.LayerNorm(embedding_dim)
@@ -90,11 +92,12 @@ class DiTBlock(nn.Module):
         ## 공식 깃허브에서는, modulate라는 함수를 따로 빼가지고 여기다가 cond 부분을 모두 구현해두엇음. 이 방식을 모방해보자.
         return x * (1+ scale.unsqueeze(1)) + shift.unsqueeze(1)
         
-        
     def forward(self,x,label,timestep):
         
         ## x : [B, 패치개수, hidden_dim]
         if self.mode == "adaLN-Zero":
+            if label.shape[-1] != timestep.shape[-1]:
+                label = self.linear(label)
             cond = label+timestep ## cond 차원은 B, 256
             scale_a1,shift_b1,scale_c1,scale_a2,shift_b2,scale_c2 = self.adaLN_modulation(cond).chunk(6,dim=1)
             

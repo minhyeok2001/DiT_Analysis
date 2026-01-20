@@ -12,12 +12,13 @@ import data.get_data
 import data.dataloader 
 from tqdm import tqdm
 from model import DiT
-from diffusers import DDPMScheduler
+from diffusers import DDPMScheduler, AutoencoderKL, EulerDiscreteScheduler
 from diffusers.training_utils import EMAModel
 from torchvision.utils import make_grid, save_image
-from diffusers import AutoencoderKL
+
 from transformers import CLIPTokenizer, CLIPTextModel
 from torchmetrics.image.fid import FrechetInceptionDistance
+
 
 
 def test():
@@ -40,7 +41,7 @@ def test():
     label = ["cat","cat","wild"]
     print(model(sample,label,timestep).shape)
 
-def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, num_inference_steps=250):
+def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=2.5, inference_type="euler", num_inference_steps=20):
     model.eval()
     os.makedirs(out_dir, exist_ok=True)
     real_dir = os.path.join(out_dir, "real")
@@ -49,8 +50,13 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
     os.makedirs(gen_dir, exist_ok=True)
 
     fid = FrechetInceptionDistance(feature=2048).to(device)
+
+    if inference_type == "euler":
+        inference_scheduler = EulerDiscreteScheduler.from_config(noise_scheduler.config)
+    else:
+        inference_scheduler = noise_scheduler
     
-    noise_scheduler.set_timesteps(num_inference_steps, device=device)
+    inference_scheduler.set_timesteps(num_inference_steps, device=device)
 
     with torch.no_grad():
         for idx, (img, cls) in enumerate(tqdm(valloader, desc="FID")):
@@ -71,17 +77,20 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
             uncond_embeddings = text_encoder(**uncond_input).pooler_output
 
             latents = torch.randn(B, 4, 16, 16).to(device)
+            
+            if inference_type == "euler":
+                latents = latents * inference_scheduler.init_noise_sigma
 
-            for t in noise_scheduler.timesteps:
-                latent_model_input = noise_scheduler.scale_model_input(latents, t)
+            for t in inference_scheduler.timesteps:
+                latent_model_input = inference_scheduler.scale_model_input(latents, t)
                 
                 noise_pred_uncond = model(x=latent_model_input, label=uncond_embeddings, timestep=t)
                 noise_pred_text = model(x=latent_model_input, label=text_embeddings, timestep=t)
                 
                 noise_pred = noise_pred_uncond + cfg_weight * (noise_pred_text - noise_pred_uncond)
                 
-                latents = noise_scheduler.step(noise_pred, t, latents).prev_sample
-
+                latents = inference_scheduler.step(noise_pred, t, latents).prev_sample
+                
             decoded = vae.decode(latents / 0.13025).sample
             decoded = (decoded / 2 + 0.5).clamp(0, 1)
             
@@ -92,17 +101,16 @@ def calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenize
                 save_image(decoded[j], os.path.join(gen_dir, f"{idx*B+j:05d}.png"))
 
     fid_score = fid.compute().item()
-    print(f"FID Score: {fid_score:.4f}")
+    print(f"FID Score ({inference_type}): {fid_score:.4f}")
     
     return fid_score
-
 
 def run(args):
     
     ## 이렇게 하면 안되지만, colab 이용해야하므로 ..,,
     wandb.login(key="08198b7be027ddffa5241b9acf2f45cd4d42e993")
     
-    device = "cuda"
+    device = "mps"
     epoch = args.epoch 
     lr = args.lr 
     batch_size = args.batch_size
@@ -110,7 +118,10 @@ def run(args):
     mode = args.mode
     num_blocks = args.num_blocks
     num_head = args.num_head
+    patch_size = args.patch_size
+    embedding_dim = args.embedding_dim
     cfg_dropout = args.cfg_dropout
+    inference_type = args.inference_type
     num_inference_steps = args.num_inference_steps
     
     wandb.init(
@@ -123,6 +134,8 @@ def run(args):
             "mode": mode,
             "num_blocks" : num_blocks,
             "num_head" : num_head,
+            "patch_size" : patch_size,
+            "embedding_dim" : embedding_dim,
             "cfg_dropout" : cfg_dropout,
             "num_inference_step" : num_inference_steps
         }
@@ -138,14 +151,13 @@ def run(args):
     
     #mode_list = ["adaLN-Zero","Cross-Attention","In-Context Conditioning"]
     
-    model = DiT(mode=args.mode,num_blocks=12,num_head=4).to(device)
+    model = DiT(mode=args.mode,num_blocks=num_blocks,num_head=num_head,patch_size=patch_size,embedding_dim=embedding_dim).to(device)
 
     ## 스케줄러 라이브러리
     noise_scheduler = DDPMScheduler()
         
     wandb.watch(model, log="all")
 
-    total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     print(f"=============================================")
@@ -153,6 +165,7 @@ def run(args):
     print(f"---------------------------------------------")
     print(f"모델 사이즈 : {trainable_params / 1e6:.2f} M (Million)")
     print(f"=============================================")
+    
     
     optimizer = torch.optim.AdamW(model.parameters(),lr=lr)    
     
@@ -170,13 +183,21 @@ def run(args):
     sample_dir = "checkpoints/val_samples"
     os.makedirs(sample_dir, exist_ok=True)
     
-    def show_prediction(step):
+    
+    def show_prediction(step, inference_type="euler"):
         model.eval()
 
         img, cls = next(iter(valloader))
         B = img.shape[0]
         cls = list(cls)
         prompts = [f"A photo of {l}" for l in cls]
+        
+        if inference_type == "euler":
+            inference_scheduler = EulerDiscreteScheduler.from_config(noise_scheduler.config)
+        else:
+            inference_scheduler = noise_scheduler
+        
+        inference_scheduler.set_timesteps(args.num_inference_steps, device=device)
 
         with torch.no_grad():
             text_input = tokenizer(prompts, padding="max_length", truncation=True, return_tensors="pt").to(device)
@@ -187,22 +208,26 @@ def run(args):
 
             latents = torch.randn(B, 4, 16, 16).to(device)
             
+            if inference_type == "euler":
+                latents = latents * inference_scheduler.init_noise_sigma
+
+            total_timesteps = len(inference_scheduler.timesteps)
             num_snapshots = 10
-            snap_idxs = set(torch.linspace(0, 1000 - 1, steps=num_snapshots).round().long().tolist())
+            
+            snap_idxs = set(torch.linspace(0, total_timesteps - 1, steps=num_snapshots).round().long().tolist())
             snapshots = []
 
-            for i, t in enumerate(noise_scheduler.timesteps):
-                t = t.to(device)
-                latent_model_input = noise_scheduler.scale_model_input(latents, t)
+            for i, t in enumerate(inference_scheduler.timesteps):
+                latent_model_input = inference_scheduler.scale_model_input(latents, t)
 
                 noise_pred_uncond = model(x=latent_model_input, label=uncond_embeddings, timestep=t)
                 noise_pred_text = model(x=latent_model_input, label=text_embeddings, timestep=t)
 
                 noise_pred = noise_pred_uncond + cfg_weight * (noise_pred_text - noise_pred_uncond)
 
-                latents = noise_scheduler.step(noise_pred, t, latents).prev_sample
+                latents = inference_scheduler.step(noise_pred, t, latents).prev_sample
 
-                if i in snap_idxs or i == num_inference_steps - 1:
+                if i in snap_idxs or i == total_timesteps - 1:
                     decoded_snap = vae.decode(latents / 0.13025).sample
                     decoded_snap = (decoded_snap / 2 + 0.5).clamp(0, 1)
                     limit = min(8, B)
@@ -211,7 +236,7 @@ def run(args):
             timeline_strip = torch.cat(snapshots, dim=-1)
             grid = make_grid(timeline_strip, nrow=1, padding=2, normalize=False)
             
-            save_path = os.path.join(sample_dir, f"iter_{step}_timeline.png")
+            save_path = os.path.join(sample_dir, f"iter_{step}_{inference_type}.png")
             save_image(grid, save_path)
 
         return save_path
@@ -301,7 +326,7 @@ def run(args):
         
         ema.store(model.parameters())
         ema.copy_to(model.parameters())
-        img_path = show_prediction(step=i)
+        img_path = show_prediction(step=i, inference_type=inference_type)
         ema.restore(model.parameters())
         
         wandb.log({
@@ -313,8 +338,7 @@ def run(args):
 
     torch.save(ema.state_dict(), "dit_model_final.pth")
     
-
-    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight, num_inference_steps=num_inference_steps)
+    fid_score = calculate_fid(valloader, noise_scheduler, model, vae, text_encoder, tokenizer, device, out_dir="checkpoints/fid_samples", cfg_weight=cfg_weight,inference_type=inference_type ,num_inference_steps=num_inference_steps)
     wandb.log({"FID_Score": fid_score})
     wandb.finish()
 
@@ -327,9 +351,12 @@ if __name__ == '__main__':
     parser.add_argument("--cfg_weight", type=float, default=2.5)
     parser.add_argument("--mode", type=str, default="adaLN-Zero", choices=["adaLN-Zero", "Cross-Attention", "In-Context Conditioning"])
     parser.add_argument("--num_blocks", type=int, default=12)
-    parser.add_argument("--num_head", type=int, default=4)
+    parser.add_argument("--num_head", type=int, default=8)
+    parser.add_argument("--patch_size", type=int, default=2)
+    parser.add_argument("--embedding_dim", type=int, default=512)
     parser.add_argument("--cfg_dropout", type=float, default=0.3)
-    parser.add_argument("--num_inference_steps", type=int, default=250)
+    parser.add_argument("--inference_type", type=str, default="euler", choices=["euler","ddpm"])
+    parser.add_argument("--num_inference_steps", type=int, default=20)
 
     args = parser.parse_args()
     
