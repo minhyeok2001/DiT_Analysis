@@ -23,10 +23,10 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 
 
 
-def test():
-    mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning","Concat"]
+def test(args):
+    mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning","Freq-Gate-adaLN"]
 
-    model = DiT(mode=mode_list[0],num_blocks=12,num_head=4)
+    model = DiT(mode=args.mode,num_blocks=args.num_blocks,num_head=args.num_head,patch_size=args.patch_size,embedding_dim=args.embedding_dim)
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -372,7 +372,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--cfg_weight", type=float, default=2.5)
-    parser.add_argument("--mode", type=str, default="adaLN-Zero", choices=["adaLN-Zero", "Cross-Attention", "In-Context-Conditioning"])
+    parser.add_argument("--mode", type=str, default="adaLN-Zero", choices=["adaLN-Zero", "Cross-Attention", "In-Context-Conditioning","Freq-Gate-adaLN"])
     parser.add_argument("--num_blocks", type=int, default=12)
     parser.add_argument("--num_head", type=int, default=8)
     parser.add_argument("--patch_size", type=int, default=2)
@@ -382,6 +382,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_inference_steps", type=int, default=20)
 
     args = parser.parse_args()
-
+    
+    #test(args)
     #test_flops(args)
     run(args)

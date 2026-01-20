@@ -107,6 +107,43 @@ class DiTBlock(nn.Module):
             )
 
 
+        elif self.mode == "Freq-Gate-adaLN":
+
+            self.norm1 = nn.LayerNorm(embedding_dim)
+            self.attn = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_head, batch_first=True)
+            self.norm2 = nn.LayerNorm(embedding_dim)
+            self.mlp = nn.Sequential(
+                nn.Linear(embedding_dim, embedding_dim * mlp_ratio),
+                nn.SiLU(),
+                nn.Linear(embedding_dim * mlp_ratio, embedding_dim),
+            )
+            
+            
+            ## 즉 시점이 0에 가까울수록 고주파를 좀 만져야하고, 1000 에 가까울수록 저주파를 만져야함. 이거 게이트 설정
+            self.freq_gate_mlp = nn.Sequential(
+                nn.SiLU(),
+                nn.Linear(embedding_dim, embedding_dim),
+                nn.Sigmoid() # 0~1 확률값 출력
+            )
+
+            ## Condition specialization adapters
+            self.cond_low_adapter = nn.Sequential(
+                nn.SiLU(),
+                nn.Linear(embedding_dim, embedding_dim)
+            )
+            self.cond_high_adapter = nn.Sequential(
+                nn.SiLU(),
+                nn.Linear(embedding_dim, embedding_dim)
+            )
+
+            self.adaLN_modulation = nn.Sequential(
+                nn.SiLU(),
+                nn.Linear(embedding_dim, 6 * embedding_dim)
+            )
+
+            nn.init.zeros_(self.adaLN_modulation[-1].weight)
+            nn.init.zeros_(self.adaLN_modulation[-1].bias)
+
         else :
             raise RuntimeError("모드 확인 고고")
 
@@ -173,6 +210,40 @@ class DiTBlock(nn.Module):
             x = self.norm2(x)
             x = self.mlp(x)
             x = x + temp
+            return x
+        
+        elif self.mode == "Freq-Gate-adaLN":
+            if label.shape[-1] != self.embedding_dim:
+                label = self.linear(label)
+
+            t_emb_proj = timestep
+
+            ## Gate 계산: 현재 t가 low freq 구간일 확률
+            gate = self.freq_gate_mlp(timestep) 
+            
+            cond_low = self.cond_low_adapter(label)
+            cond_high = self.cond_high_adapter(label)
+            
+            adaptive_cond = gate * cond_low + (1 - gate) * cond_high ## 마치 그 diffuser 3dunet에 보면, mix하는 부분이 매 블럭 마지막 부분에 있었는데, 그런느낌으로 !!
+
+            final_cond = adaptive_cond + t_emb_proj
+            
+            scale_a1, shift_b1, scale_c1, scale_a2, shift_b2, scale_c2 = self.adaLN_modulation(final_cond).chunk(6, dim=1)
+            
+            temp = x
+            x = self.norm1(x)
+            x = self.modulate(x, scale_c1, shift_b1)
+            x, _ = self.attn(x, x, x)
+            x = x * scale_a1.unsqueeze(1)
+            x = x + temp
+            
+            temp = x
+            x = self.norm2(x)
+            x = self.modulate(x, scale_c2, shift_b2)
+            x = self.mlp(x)
+            x = x * scale_a2.unsqueeze(1)
+            x = x + temp
+            
             return x
 
         else :

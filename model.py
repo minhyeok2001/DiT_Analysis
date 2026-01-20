@@ -9,7 +9,7 @@ class DiT(nn.Module):
     def __init__(self, mode, num_blocks, num_head, patch_size=4, embedding_dim=256, resolution=128):
         super().__init__()
         
-        mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning"]
+        mode_list = ["adaLN-Zero","Cross-Attention","In-Context-Conditioning","Freq-Gate-adaLN"]
         
         assert mode in mode_list, "mode 선택 다시하기 !!"
         
