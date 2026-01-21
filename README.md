@@ -85,7 +85,17 @@ I observed that the diffusion process naturally follows a **Coarse-to-Fine** pro
 
 FFT analysis quantitatively validates this spectral evolution, confirming a distinct shift in the frequency domain as the denoising steps progress.
 
-사진
+
+<p align="center">
+   <img width="3694" height="2715" alt="image" src="https://github.com/user-attachments/assets/25dacea3-61e2-4666-8e0a-e679e8f5f6bf" /><br>
+   <i>FFT analysis</i>
+</p>
+
+The restoration of low-frequency content (structure) dominates the early denoising steps, 
+
+whereas the suppression of high-frequency magnitudes (noise removal and detail enhancement) occurs primarily in the final stages. 
+
+This confirms that the model synthesizes images by progressively resolving features from coarse to fine scales
 
 
 **This observation raises a critical question:**
@@ -105,8 +115,8 @@ Fine-grained attributes like **"fur texture"** or a **"smiling expression"** bec
 
 
 <p align="center">
-  사진
-  <i> Architecture of Freq-Gate-adaLN </i>
+<img width="550" height="500" alt="스크린샷 2026-01-21 오후 4 56 27" src="https://github.com/user-attachments/assets/10601d9e-7e44-4547-9c4c-7b2f5fc541b1" /><br>
+  <i> Architecture of Freq-Gate-adaLN. Close shot of DiT block </i>
 </p>
 
 To incorporate this inductive bias, I proposed **Freq-Gate-adaLN**.
