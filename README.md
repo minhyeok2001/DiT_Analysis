@@ -1,6 +1,11 @@
 # Diffusion Transformer Analysis
 
-DiT 메인 그림 넣기
+<p align="center">
+   <img width="935" height="423" alt="스크린샷 2026-01-21 오후 2 57 01" src="https://github.com/user-attachments/assets/475ea686-3941-42c0-8e3d-7019dcce950c" /><br>
+   <i>Image from "Scalable Diffusion Models with Transformers"</i>
+</p>
+
+
 
 This repository implements the Diffusion Transformer (DiT) from scratch ,
 
@@ -26,7 +31,7 @@ Since this is a generative modeling task rather than a classification one, only 
    <i>9000 samples for Train, 5100 samples for evaluating FID score</i>
 </p>
 
-Training was conducted using RTX5090 hosted by [vast.ai](https://vast.ai/)
+Training was conducted using RTX5090 32GB hosted by [vast.ai](https://vast.ai/)
 
 All codes were developed and tested on a Mac beforehand.
 
@@ -34,7 +39,7 @@ All codes were developed and tested on a Mac beforehand.
 
 ## 1. Reproduction & Benchmarks
 
-**1. Full Implementation of DiT Variants**
+### Full Implementation of DiT Variants
 
 I implemented the DiT architecture and training pipeline from scratch
 
@@ -47,22 +52,20 @@ To verify the observations of the original paper, I implemented and experimented
   * adaLN-Zero: Modulating layer normalization parameters directly via embeddings.
 
 
-그림 넣기
-  
+
+<p align="center">
+   <img width="1277" height="518" alt="스크린샷 2026-01-21 오후 3 01 13" src="https://github.com/user-attachments/assets/9dcaaa71-fd17-43e8-be70-d34483e6908e" /><br>
+   <i>Loss from three different methods</i>
+</p>
+
+| Conditioning Mechanism  | FID Score (↓) |
+| :--- | :--- |
+| **Cross-Attention** | 95.97 |
+| **In-Context** | 64.80 |
+| **adaLN-Zero** | **60.11** |
+> *Note: FID scores were calculated using Euler Scheduler (20 steps) with CFG.*
+
 Consistent with the original paper, **adaLN-Zero** demonstrated the most efficient convergence and superior generation quality.
-
-
----
-
-**2. Efficient Evaluation Strategy**
-
-The original paper utilized the DDPM sampler with 250 steps for evaluation.
-
-Due to computational constraints and the need for efficient experimentation, 
-
-I utilized the **Euler Discrete Solver** (20 steps) for sampling and calculating FID scores.
-
-This setup allowed for rapid benchmarking while maintaining relative performance consistency across different models.
 
 ---
 
@@ -72,7 +75,10 @@ This setup allowed for rapid benchmarking while maintaining relative performance
 
 I observed that the diffusion process naturally follows a **Coarse-to-Fine** progression:
 
-사진 첨부
+<p align="center">
+   <img width="626" height="107" alt="스크린샷 2026-01-21 오후 3 07 12" src="https://github.com/user-attachments/assets/67dd33aa-ea67-4197-8bd8-28e3252d8791" /><br>
+   <i>Denoising process. We can observe that the model construct Coarse -> Fine details</i>
+</p>
 
 * **Early Steps ($t \approx T$):** The model focuses on reconstructing low-frequency components (Global structure, Layout).
 * **Late Steps ($t \approx 0$):** The model shifts focus to high-frequency details (Fine textures, Edges).
@@ -81,10 +87,11 @@ FFT analysis quantitatively validates this spectral evolution, confirming a dist
 
 사진
 
+
 **This observation raises a critical question:**
 > *"If the image restoration process evolves from structure to detail, shouldn't the conditioning guidance evolve as well?"*
 
-We argue that providing a static class condition vector is suboptimal. 
+I argue that providing a static class condition vector is suboptimal. 
 
 Instead, the conditioning mechanism should **explicitly reflect this frequency evolution**,
 
@@ -112,9 +119,9 @@ To incorporate this inductive bias, I proposed **Freq-Gate-adaLN**.
 
 ### Results
 
-We compared our proposed method against the standard baselines. 
+I compared our proposed method against the standard baselines. 
 
-To match the number of parameters, we added two additional blocks to the baseline model.
+To match the number of parameters, I added two additional blocks to the baseline model.
 
 * **Baseline:** Standard `adaLN-Zero` implementation (with 14 DiT blocks)
 * **Ours:** `Freq-Gate-adaLN` with Spectral Loss.
@@ -124,7 +131,7 @@ To match the number of parameters, we added two additional blocks to the baselin
 | **Baseline** | adaLN-Zero | 12.45 | 0.0890 | 68.58 M |
 | **Ours** | Freq-Gate-adaLN | **11.80** | **0.0875** | 68.32 M |
 
-> *Note: FID scores were calculated using Euler Scheduler (50 steps).*
+> *Note: FID scores were calculated using Euler Scheduler (20 steps) with CFG.*
 
 The results show that explicitly addressing the frequency dynamics leads to better convergence and detail generation.
 
@@ -134,14 +141,13 @@ You can check the full experiment logs on W&B — [click here](https://wandb.ai/
 
 ### Conclusion
 
-Through this project, we verified that the standard **adaLN-Zero** is indeed a robust baseline. However, by introducing **Freq-Gate-adaLN**, we observed meaningful improvements in model performance.
+Through this project, I verified that the standard **adaLN-Zero** is indeed a robust baseline. 
+
+However, by introducing **Freq-Gate-adaLN**, I observed meaningful improvements in model performance.
 
 **Key Findings:**
 1. **Frequency Dynamics:** The denoising process strongly correlates with frequency restoration order (Low $\to$ High).
 2. **Dynamic Gating:** Allowing the model to "switch gears" between low-freq and high-freq modes improves generation quality without significant computational overhead.
 
-We confirmed that our proposed module can be applied without harming the baseline performance and provides a promising direction for parameter-efficient fine-tuning in generative models.
+I confirmed that my proposed module can be applied without harming the baseline performance and provides a promising direction for parameter-efficient fine-tuning in generative models.
 
----
-
-*This is a personal research project implemented for educational and experimental purposes.*
