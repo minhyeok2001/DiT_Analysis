@@ -5,8 +5,6 @@
    <i>Image from "Scalable Diffusion Models with Transformers"</i>
 </p>
 
-
-
 This repository implements the Diffusion Transformer (DiT) from scratch ,
 
 proposes an extended architecture focused on **Frequency-Aware Conditioning**. 
@@ -136,14 +134,19 @@ To match the number of parameters, I added two additional blocks to the baseline
 * **Baseline:** Standard `adaLN-Zero` implementation (with 14 DiT blocks)
 * **Ours:** `Freq-Gate-adaLN` with Spectral Loss.
 
-| Method | Conditioning | FID Score (↓) | Train Loss (MSE) | Params (M) |
+<p align="center">
+   <img width="650" height="533" alt="스크린샷 2026-01-21 오후 8 43 47" src="https://github.com/user-attachments/assets/83e9301f-4a3d-4453-ac77-061da0664ed5" /><br>
+   <i>Loss of baseline and My own Freq-Gate-adaLN</i>
+</p>
+
+| Method | Conditioning | FID Score (↓) | Val Loss (MSE) | Params (M) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Baseline** | adaLN-Zero | 12.45 | 0.0890 | 68.58 M |
-| **Ours** | Freq-Gate-adaLN | **11.80** | **0.0875** | 68.32 M |
+| **Baseline** | adaLN-Zero | **54.26617** | **0.15092** | 68.58 M |
+| **Ours** | Freq-Gate-adaLN | 58.44975 | 0.152 | 68.32 M |
 
 > *Note: FID scores were calculated using Euler Scheduler (20 steps) with CFG.*
 
-Unfortunately, The results show that there is no surprising gap between baseline and my method.
+Unfortunately, The results show that there is no surprising gap and even worse than the baseline.
 
 You can check the full experiment logs on W&B — [click here](https://wandb.ai/mhroh01-ajou-university/DiT%20Analysis).
 
