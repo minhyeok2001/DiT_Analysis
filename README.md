@@ -143,21 +143,31 @@ To match the number of parameters, I added two additional blocks to the baseline
 
 > *Note: FID scores were calculated using Euler Scheduler (20 steps) with CFG.*
 
-The results show that explicitly addressing the frequency dynamics leads to better convergence and detail generation.
+Unfortunately, The results show that there is no surprising gap between baseline and my method.
 
 You can check the full experiment logs on W&B — [click here](https://wandb.ai/mhroh01-ajou-university/DiT%20Analysis).
 
 ---
 
+
 ### Conclusion
 
-Through this project, I verified that the standard **adaLN-Zero** is indeed a robust baseline. 
+Despite the results showing comparable performance to the baseline rather than a significant leap, 
 
-However, by introducing **Freq-Gate-adaLN**, I observed meaningful improvements in model performance.
+this project offers meaningful interpretations regarding the internal mechanisms of diffusion models.
 
-**Key Findings:**
-1. **Frequency Dynamics:** The denoising process strongly correlates with frequency restoration order (Low $\to$ High).
-2. **Dynamic Gating:** Allowing the model to "switch gears" between low-freq and high-freq modes improves generation quality without significant computational overhead.
+While **Freq-Gate-adaLN** performed on par with the standard **adaLN-Zero**, 
 
-I confirmed that my proposed module can be applied without harming the baseline performance and provides a promising direction for parameter-efficient fine-tuning in generative models.
+it successfully validated the underlying frequency dynamics of the denoising process.
+
+**Key Findings**
+
+* **Frequency Dynamics:** Experiments verified that the denoising process inherently follows a **Low → High restoration order**
+  
+* **Interpretable Mechanism:** The gating module autonomously learned to prioritize low frequencies in early steps and high frequencies in later steps,
+   empirically proving the **coarse-to-fine** generation behavior.
+
+In conclusion, my approach maintains baseline quality while offering a more **interpretable architecture**, 
+
+confirming that explicit frequency modeling is a valid direction for future research.
 
