@@ -170,7 +170,8 @@ def run(args):
             "patch_size" : patch_size,
             "embedding_dim" : embedding_dim,
             "cfg_dropout" : cfg_dropout,
-            "num_inference_step" : num_inference_steps
+            "num_inference_step" : num_inference_steps,
+            "fft_weight": fft_weight
         }
     )
     
@@ -281,6 +282,7 @@ def run(args):
         
         model.train()
         running_loss = 0.0
+        running_fft_loss = 0.0
         total_len = len(trainloader)
         for img, cls in tqdm(trainloader):
             optimizer.zero_grad()
@@ -317,8 +319,9 @@ def run(args):
             
             if args.mode == "Freq-Gate-adaLN":
                 loss_fft = spectral_loss(noise_pred, noise)
-                print("loss : ", loss)
-                print("fft_loss : ", loss_fft)
+                current_fft_loss = loss_fft.item()
+                running_fft_loss += current_fft_loss
+                
                 loss = loss + (fft_weight * loss_fft)
                 
             loss.backward()
@@ -329,10 +332,18 @@ def run(args):
             running_loss += loss.item()
 
         avg_train_loss = running_loss / total_len
-        print(f"Epoch [{i+1}/{epoch}] | Train Loss: {avg_train_loss:.6f}")
+        
+        if mode == "Freq-Gate-adaLN":
+            avg_fft_loss = running_fft_loss / total_len
+            print(f"Epoch [{i+1}/{epoch}] | Train Loss: {avg_train_loss:.6f} | FFT Loss: {avg_fft_loss:.6f}")
+        
+        else : 
+            print(f"Epoch [{i+1}/{epoch}] | Train Loss: {avg_train_loss:.6f}")
         
         val_loss = 0.0
         val_batches = len(valloader)
+        val_fft_running = 0.0
+        
         model.eval()
         
         with torch.no_grad():
@@ -364,7 +375,7 @@ def run(args):
                 
                 if args.mode == "Freq-Gate-adaLN":
                     loss_fft = spectral_loss(noise_pred, noise)
-                    loss = loss + (fft_weight * loss_fft)
+                    val_fft_running += loss_fft.item()
                     
                 val_loss += loss.item()
             
@@ -376,12 +387,27 @@ def run(args):
         img_path = show_prediction(step=i, inference_type=inference_type)
         ema.restore(model.parameters())
         
-        wandb.log({
-            "train_loss": avg_train_loss,
-            "val_loss": avg_val_loss,
-            "epoch": i + 1,
-            "sample":wandb.Image(img_path)
-        })
+        
+        if args.mode == "Freq-Gate-adaLN":
+            avg_val_fft = val_fft_running / val_batches
+            
+            wandb.log({
+                "train_loss": avg_train_loss,
+                "train_fft_loss": avg_fft_loss,
+                "val_loss": avg_val_loss,
+                "val_fft_loss": avg_val_fft,
+                "epoch": i + 1,
+                "sample":wandb.Image(img_path)
+            })
+        
+        else : 
+            wandb.log({
+                "train_loss": avg_train_loss,
+                "val_loss": avg_val_loss,
+                "epoch": i + 1,
+                "sample":wandb.Image(img_path)
+            })
+            
 
     torch.save(ema.state_dict(), "dit_model_final.pth")
     

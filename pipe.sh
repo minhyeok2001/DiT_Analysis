@@ -3,4 +3,9 @@ python train.py --mode Cross-Attention  --epoch 500 --batch_size 32
 python train.py --mode In-Context-Conditioning  --epoch 500 --batch_size 32
 python train.py --mode Freq-Gate-adaLN  --epoch 500 --batch_size 32
 
+python train.py --device mps --mode Freq-Gate-adaLN --epoch 1 --batch_size 1
+python train.py --device mps --mode adaLN-Zero  --num_blocks 14 --epoch 1 --batch_size 1 
 
+
+python train.py --mode adaLN-Zero  --num_blocks 14 --epoch 500 --batch_size 32
+python train.py --mode Freq-Gate-adaLN  --epoch 500 --batch_size 32
