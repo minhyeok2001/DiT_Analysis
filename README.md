@@ -135,7 +135,7 @@ To match the number of parameters, I added two additional blocks to the baseline
 * **Ours:** `Freq-Gate-adaLN` with Spectral Loss.
 
 <p align="center">
-   <img width="650" height="533" alt="스크린샷 2026-01-21 오후 8 43 47" src="https://github.com/user-attachments/assets/83e9301f-4a3d-4453-ac77-061da0664ed5" /><br>
+   <img width="500" height="400" alt="스크린샷 2026-01-21 오후 8 43 47" src="https://github.com/user-attachments/assets/83e9301f-4a3d-4453-ac77-061da0664ed5" /><br>
    <i>Loss of baseline and My own Freq-Gate-adaLN</i>
 </p>
 
