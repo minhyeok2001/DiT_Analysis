@@ -3,3 +3,4 @@ test.py
 data/dataset/
 wandb/
 __pycache__/
+fft_*
