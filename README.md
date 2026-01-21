@@ -167,8 +167,8 @@ it successfully validated the underlying frequency dynamics of the denoising pro
 
 * **Frequency Dynamics:** Experiments verified that the denoising process inherently follows a **Low → High restoration order**
   
-* **Interpretable Mechanism:** The gating module autonomously learned to prioritize low frequencies in early steps and high frequencies in later steps,
-   empirically proving the **coarse-to-fine** generation behavior.
+* **Interpretable Mechanism**: The gating module autonomously learned to prioritize specific frequencies aligning with the generation process 
+(**Low-Gate $\approx$ 0.62** in early steps vs. **High-Gate $\approx$ 0.59** in later steps), empirically proving the coarse-to-fine generation behavior.
 
 In conclusion, my approach maintains baseline quality while offering a more **interpretable architecture**, 
 
