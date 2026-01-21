@@ -123,6 +123,19 @@ def calculate_fid(mode, valloader, noise_scheduler, model, vae, text_encoder, to
     
     return fid_score
 
+
+def spectral_loss(pred, target):
+    ## 2d fft인데 계산이 rfft가 좋다해서 ...
+    pred_fft = torch.fft.rfft2(pred, norm='ortho')
+    target_fft = torch.fft.rfft2(target, norm='ortho')
+    
+    ## 진폭 추출
+    pred_mag = torch.abs(pred_fft)
+    target_mag = torch.abs(target_fft)
+    loss = F.l1_loss(pred_mag, target_mag)
+    
+    return loss
+
 def run(args):
     
     ## 이렇게 하면 안되지만, colab 이용해야하므로 ..,,
@@ -141,6 +154,7 @@ def run(args):
     cfg_dropout = args.cfg_dropout
     inference_type = args.inference_type
     num_inference_steps = args.num_inference_steps
+    fft_weight = args.fft_weight
     
     wandb.init(
         project="DiT Analysis",
@@ -300,7 +314,13 @@ def run(args):
         
             noise_pred = model(x=noisy_latents, label=label_emb, timestep=t)
             loss = F.mse_loss(noise_pred, noise) 
-
+            
+            if args.mode == "Freq-Gate-adaLN":
+                loss_fft = spectral_loss(noise_pred, noise)
+                print("loss : ", loss)
+                print("fft_loss : ", loss_fft)
+                loss = loss + (fft_weight * loss_fft)
+                
             loss.backward()
             optimizer.step()
             
@@ -341,6 +361,11 @@ def run(args):
             
                 noise_pred = model(x=noisy_latents, label=label_emb, timestep=t)
                 loss = F.mse_loss(noise_pred, noise) 
+                
+                if args.mode == "Freq-Gate-adaLN":
+                    loss_fft = spectral_loss(noise_pred, noise)
+                    loss = loss + (fft_weight * loss_fft)
+                    
                 val_loss += loss.item()
             
         avg_val_loss = val_loss / val_batches
@@ -380,6 +405,7 @@ if __name__ == '__main__':
     parser.add_argument("--cfg_dropout", type=float, default=0.3)
     parser.add_argument("--inference_type", type=str, default="euler", choices=["euler","ddpm"])
     parser.add_argument("--num_inference_steps", type=int, default=20)
+    parser.add_argument("--fft_weight", type=float, default=0.1)
 
     args = parser.parse_args()
     

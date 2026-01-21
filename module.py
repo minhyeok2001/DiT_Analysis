@@ -218,6 +218,7 @@ class DiTBlock(nn.Module):
 
             t_emb_proj = timestep
 
+
             ## Gate 계산: 현재 t가 low freq 구간일 확률
             gate = self.freq_gate_mlp(timestep) 
             
